@@ -12,6 +12,6 @@ export function allEmailPickupApiKey() {
     return http.get('/allEmail/pickup/apiKey')
 }
 
-export function allEmailPickupSetApiKey(apiKey) {
-    return http.put('/allEmail/pickup/apiKey', {apiKey})
+export function allEmailPickupSetApiKey(apiKeys) {
+    return http.put('/allEmail/pickup/apiKey', {apiKeys})
 }

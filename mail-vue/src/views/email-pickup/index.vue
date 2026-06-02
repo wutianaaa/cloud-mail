@@ -5,20 +5,7 @@
         <h2>{{ t('mailPickup') }}</h2>
         <p>{{ t('mailPickupDesc') }}</p>
       </div>
-    </div>
-
-    <div class="pickup-panel">
-      <div class="panel-title panel-title-inline">
-        <span>{{ t('apiKey') }}</span>
-        <el-button size="small" @click="generateApiKey">{{ t('generateApiKey') }}</el-button>
-      </div>
-      <p class="api-key-desc">{{ t('pickupApiKeyDesc') }}</p>
-      <div class="api-key-actions">
-        <el-input v-model="apiKeyForm.apiKey" :placeholder="t('apiKey')" show-password clearable />
-        <el-button type="primary" :loading="apiKeyLoading" @click="saveApiKey">{{ t('saveApiKey') }}</el-button>
-        <el-button :disabled="!apiKeyForm.apiKey" @click="copyText(apiKeyForm.apiKey)">{{ t('copy') }}</el-button>
-        <el-button :loading="apiKeyLoading" @click="clearApiKey">{{ t('clearApiKey') }}</el-button>
-      </div>
+      <el-button @click="openApiKeyDialog">{{ t('apiKey') }}</el-button>
     </div>
 
     <div class="pickup-panel">
@@ -37,7 +24,10 @@
         <el-form-item :label="t('toEmail')">
           <el-input v-model="form.email" :placeholder="t('toEmail')" clearable>
             <template #append>
-              <el-button @click="generateEmail">{{ t('generate') }}</el-button>
+              <div class="email-actions">
+                <el-button :disabled="!form.email" @click="copyText(form.email)">{{ t('copy') }}</el-button>
+                <el-button @click="generateEmail(true)">{{ t('regenerateEmail') }}</el-button>
+              </div>
             </template>
           </el-input>
         </el-form-item>
@@ -49,6 +39,17 @@
         <el-form-item :label="t('mailCount')">
           <el-input-number v-model="form.n" :min="1" :max="50" class="full-width" />
         </el-form-item>
+
+        <el-form-item :label="t('codeFetchInterval')">
+          <el-select v-model="form.codeInterval" class="full-width" @change="restartCodeTimer">
+            <el-option :label="t('disable')" :value="0" />
+            <el-option label="5s" :value="5" />
+            <el-option label="1s" :value="1" />
+            <el-option label="3s" :value="3" />
+            <el-option label="10s" :value="10" />
+            <el-option label="30s" :value="30" />
+          </el-select>
+        </el-form-item>
       </el-form>
 
       <div class="actions">
@@ -57,9 +58,6 @@
         </el-button>
         <el-button :loading="codeLoading" @click="fetchCode">
           {{ t('fetchLatestCode') }}
-        </el-button>
-        <el-button :disabled="!form.email" @click="copyText(form.email)">
-          {{ t('copyEmail') }}
         </el-button>
       </div>
     </div>
@@ -108,11 +106,27 @@
       </div>
       <pre class="message-text">{{ currentMessage.text || currentMessage.content || '' }}</pre>
     </el-dialog>
+
+    <el-dialog v-model="apiKeyDialog" :title="t('apiKey')" width="680">
+      <p class="api-key-desc">{{ t('pickupApiKeyDesc') }}</p>
+      <div class="api-key-list">
+        <div v-for="(apiKey, index) in apiKeyForm.apiKeys" :key="index" class="api-key-row">
+          <el-input v-model="apiKeyForm.apiKeys[index]" :placeholder="t('apiKey')" show-password clearable />
+          <el-button :disabled="!apiKey" @click="copyText(apiKey)">{{ t('copy') }}</el-button>
+          <el-button @click="removeApiKey(index)">{{ t('delete') }}</el-button>
+        </div>
+      </div>
+      <div class="api-key-dialog-actions">
+        <el-button @click="generateApiKey">{{ t('generateApiKey') }}</el-button>
+        <el-button type="primary" :loading="apiKeyLoading" @click="saveApiKey">{{ t('saveApiKey') }}</el-button>
+        <el-button :loading="apiKeyLoading" @click="clearApiKey">{{ t('clearApiKey') }}</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import {computed, onMounted, reactive, ref, watch} from 'vue';
+import {computed, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
 import {useI18n} from 'vue-i18n';
 import {useSettingStore} from '@/store/setting.js';
 import {
@@ -134,7 +148,9 @@ const messagesLoading = ref(false);
 const codeLoading = ref(false);
 const apiKeyLoading = ref(false);
 const messageDialog = ref(false);
+const apiKeyDialog = ref(false);
 const currentMessage = ref({});
+let codeTimer = null;
 const codeResult = reactive({
   code: '',
   emailId: '',
@@ -146,34 +162,48 @@ const form = reactive({
   domain: domainList.value[0] || '',
   email: '',
   sendEmail: '',
-  n: 1
+  n: 1,
+  codeInterval: 5
 });
 
 const apiKeyForm = reactive({
-  apiKey: ''
+  apiKeys: []
 });
 
 onMounted(() => {
   loadApiKey();
+  ensureEmailGenerated();
+  restartCodeTimer();
+});
+
+onBeforeUnmount(() => {
+  stopCodeTimer();
 });
 
 watch(domainList, (list) => {
   if (!form.domain && list.length > 0) {
     form.domain = list[0];
+    ensureEmailGenerated();
+    restartCodeTimer();
   }
 });
 
-function generateEmail() {
-  if (!form.domain) {
-    ElMessage({
-      message: t('domainDesc'),
+function generateEmail(restartTimer = false) {
+	if (!form.domain) {
+		ElMessage({
+			message: t('domainDesc'),
       type: 'warning',
       plain: true
     });
     return;
   }
 
-  form.email = randomPrefix(12) + form.domain;
+	form.email = randomPrefix(12) + form.domain;
+	clearCodeResult();
+
+	if (restartTimer) {
+		restartCodeTimer();
+	}
 }
 
 function randomPrefix(length) {
@@ -192,18 +222,66 @@ function randomToken(length) {
 
 async function loadApiKey() {
   const data = await allEmailPickupApiKey();
-  apiKeyForm.apiKey = data?.apiKey || '';
+  apiKeyForm.apiKeys = data?.apiKeys?.length ? data.apiKeys : (data?.apiKey ? [data.apiKey] : []);
+}
+
+function ensureEmailGenerated() {
+	if (!form.email && form.domain) {
+		generateEmail();
+  }
+}
+
+function clearCodeResult() {
+  codeResult.code = '';
+  codeResult.emailId = '';
+  codeResult.sendEmail = '';
+  codeResult.createTime = '';
+}
+
+function stopCodeTimer() {
+  if (codeTimer) {
+    clearInterval(codeTimer);
+    codeTimer = null;
+  }
+}
+
+function restartCodeTimer() {
+	stopCodeTimer();
+
+	if (!form.codeInterval) {
+		return;
+	}
+
+	ensureEmailGenerated();
+
+	if (!form.email) {
+		return;
+	}
+
+	fetchCode();
+	codeTimer = setInterval(() => {
+    fetchCode();
+  }, form.codeInterval * 1000);
+}
+
+async function openApiKeyDialog() {
+  await loadApiKey();
+  apiKeyDialog.value = true;
 }
 
 function generateApiKey() {
-  apiKeyForm.apiKey = randomToken(32);
+  apiKeyForm.apiKeys.push(randomToken(32));
+}
+
+function removeApiKey(index) {
+  apiKeyForm.apiKeys.splice(index, 1);
 }
 
 async function saveApiKey() {
   apiKeyLoading.value = true;
   try {
-    const data = await allEmailPickupSetApiKey(apiKeyForm.apiKey);
-    apiKeyForm.apiKey = data?.apiKey || '';
+    const data = await allEmailPickupSetApiKey(apiKeyForm.apiKeys);
+    apiKeyForm.apiKeys = data?.apiKeys || [];
     ElMessage({
       message: t('saveSuccessMsg'),
       type: 'success',
@@ -215,18 +293,27 @@ async function saveApiKey() {
 }
 
 async function clearApiKey() {
-  apiKeyLoading.value = true;
-  try {
-    await allEmailPickupSetApiKey('');
-    apiKeyForm.apiKey = '';
-    ElMessage({
-      message: t('clearSuccess'),
-      type: 'success',
-      plain: true
-    });
-  } finally {
-    apiKeyLoading.value = false;
-  }
+  ElMessageBox.confirm(
+      t('clearApiKeyConfirm'),
+      {
+        confirmButtonText: t('confirm'),
+        cancelButtonText: t('cancel'),
+        type: 'warning',
+      }
+  ).then(async () => {
+    apiKeyLoading.value = true;
+    try {
+      await allEmailPickupSetApiKey([]);
+      apiKeyForm.apiKeys = [];
+      ElMessage({
+        message: t('clearSuccess'),
+        type: 'success',
+        plain: true
+      });
+    } finally {
+      apiKeyLoading.value = false;
+    }
+  });
 }
 
 function checkEmail() {
@@ -255,6 +342,7 @@ async function fetchMessages() {
 
 async function fetchCode() {
   if (!checkEmail()) return;
+  if (codeLoading.value) return;
 
   codeLoading.value = true;
   try {
@@ -336,15 +424,6 @@ async function copyText(text) {
   margin-bottom: 16px;
 }
 
-.panel-title-inline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 0 0 12px;
-  border-bottom: 0;
-}
-
 .api-key-desc {
   margin: 0 0 12px;
   color: var(--el-text-color-secondary);
@@ -352,10 +431,24 @@ async function copyText(text) {
   line-height: 20px;
 }
 
-.api-key-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+.api-key-list {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+}
+
+.api-key-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+}
+
+.api-key-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .form-grid {
@@ -480,8 +573,15 @@ async function copyText(text) {
     }
   }
 
-  .api-key-actions {
+  .api-key-row {
     grid-template-columns: 1fr;
+  }
+
+  .api-key-dialog-actions {
+    .el-button {
+      width: 100%;
+      margin-left: 0;
+    }
   }
 }
 </style>

@@ -62,31 +62,60 @@ const allEmailPickupService = {
 	},
 
 	async getApiKey(c) {
-		const apiKey = await c.env.kv.get(KvConst.ALL_EMAIL_PICKUP_API_KEY);
+		const value = await c.env.kv.get(KvConst.ALL_EMAIL_PICKUP_API_KEY);
+		const apiKeys = this.parseApiKeys(value);
 
 		return {
-			apiKey,
-			hasApiKey: !!apiKey
+			apiKey: apiKeys[0] || '',
+			apiKeys,
+			hasApiKey: apiKeys.length > 0
 		};
 	},
 
 	async setApiKey(c, params) {
-		const { apiKey } = params;
+		let apiKeys = [];
 
-		if (!apiKey) {
+		if (Array.isArray(params.apiKeys)) {
+			apiKeys = params.apiKeys;
+		} else if (params.apiKey) {
+			apiKeys = [params.apiKey];
+		}
+
+		apiKeys = [...new Set(apiKeys.map(item => String(item || '').trim()).filter(Boolean))];
+
+		if (apiKeys.length === 0) {
 			await c.env.kv.delete(KvConst.ALL_EMAIL_PICKUP_API_KEY);
 			return {
 				apiKey: '',
+				apiKeys: [],
 				hasApiKey: false
 			};
 		}
 
-		await c.env.kv.put(KvConst.ALL_EMAIL_PICKUP_API_KEY, apiKey);
+		await c.env.kv.put(KvConst.ALL_EMAIL_PICKUP_API_KEY, JSON.stringify(apiKeys));
 
 		return {
-			apiKey,
+			apiKey: apiKeys[0],
+			apiKeys,
 			hasApiKey: true
 		};
+	},
+
+	parseApiKeys(value) {
+		if (!value) {
+			return [];
+		}
+
+		try {
+			const data = JSON.parse(value);
+			if (Array.isArray(data)) {
+				return data.map(item => String(item || '').trim()).filter(Boolean);
+			}
+		} catch (e) {
+			return [String(value).trim()].filter(Boolean);
+		}
+
+		return [String(value).trim()].filter(Boolean);
 	},
 
 	baseWhere(toEmail, sendEmail) {

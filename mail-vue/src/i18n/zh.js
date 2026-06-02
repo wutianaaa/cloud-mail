@@ -352,6 +352,9 @@ const zh = {
     pickupApiKeyDesc: '外部调用方可使用该密钥通过 X-API-Key 访问取件接口。',
     generateApiKey: '生成密钥',
     saveApiKey: '保存密钥',
-    clearApiKey: '清空密钥'
+    clearApiKey: '清空密钥',
+    clearApiKeyConfirm: '确认清空所有 API 密钥吗？',
+    regenerateEmail: '重新生成',
+    codeFetchInterval: '验证码获取间隔'
 }
 export default zh

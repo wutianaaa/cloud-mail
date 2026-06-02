@@ -195,6 +195,24 @@ async function validPickupApiKey(c) {
 	}
 
 	const savedApiKey = await c.env.kv.get(KvConst.ALL_EMAIL_PICKUP_API_KEY);
+	const savedApiKeys = parsePickupApiKeys(savedApiKey);
 
-	return !!savedApiKey && apiKey === savedApiKey;
+	return savedApiKeys.includes(apiKey);
+}
+
+function parsePickupApiKeys(value) {
+	if (!value) {
+		return [];
+	}
+
+	try {
+		const data = JSON.parse(value);
+		if (Array.isArray(data)) {
+			return data.map(item => String(item || '').trim()).filter(Boolean);
+		}
+	} catch (e) {
+		return [String(value).trim()].filter(Boolean);
+	}
+
+	return [String(value).trim()].filter(Boolean);
 }

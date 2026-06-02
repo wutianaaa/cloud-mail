@@ -352,7 +352,10 @@ const en = {
     pickupApiKeyDesc: 'External callers can use this key with X-API-Key to access the pickup APIs.',
     generateApiKey: 'Generate Key',
     saveApiKey: 'Save Key',
-    clearApiKey: 'Clear Key'
+    clearApiKey: 'Clear Key',
+    clearApiKeyConfirm: 'Confirm clearing all API keys?',
+    regenerateEmail: 'Regenerate',
+    codeFetchInterval: 'Code Fetch Interval'
 }
 
 export default en

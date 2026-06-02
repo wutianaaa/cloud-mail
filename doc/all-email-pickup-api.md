@@ -11,7 +11,7 @@
 - 原有登录态认证：请求头 `Authorization: <JWT>`。
 - API Key 认证：请求头 `X-API-Key: <apiKey>`。
 
-API Key 在前端“邮件取件”页面设置。也兼容 query 参数 `apiKey`，但外部调用建议使用请求头，避免密钥出现在日志或浏览器地址栏中。
+API Key 在前端“邮件取件”页面设置，可以保存多个密钥。也兼容 query 参数 `apiKey`，但外部调用建议使用请求头，避免密钥出现在日志或浏览器地址栏中。
 
 ```bash
 curl -H "X-API-Key: your-api-key" \
