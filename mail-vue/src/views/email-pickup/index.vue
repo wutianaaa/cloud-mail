@@ -126,7 +126,7 @@
 </template>
 
 <script setup>
-import {computed, onBeforeUnmount, onMounted, reactive, ref, watch} from 'vue';
+import {computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref, watch} from 'vue';
 import {useI18n} from 'vue-i18n';
 import {useSettingStore} from '@/store/setting.js';
 import {
@@ -150,6 +150,7 @@ const apiKeyLoading = ref(false);
 const messageDialog = ref(false);
 const apiKeyDialog = ref(false);
 const currentMessage = ref({});
+const pageActive = ref(false);
 let codeTimer = null;
 const codeResult = reactive({
   code: '',
@@ -173,10 +174,21 @@ const apiKeyForm = reactive({
 onMounted(() => {
   loadApiKey();
   ensureEmailGenerated();
+});
+
+onActivated(() => {
+  pageActive.value = true;
+  ensureEmailGenerated();
   restartCodeTimer();
 });
 
+onDeactivated(() => {
+  pageActive.value = false;
+  stopCodeTimer();
+});
+
 onBeforeUnmount(() => {
+  pageActive.value = false;
   stopCodeTimer();
 });
 
@@ -184,7 +196,9 @@ watch(domainList, (list) => {
   if (!form.domain && list.length > 0) {
     form.domain = list[0];
     ensureEmailGenerated();
-    restartCodeTimer();
+    if (pageActive.value) {
+      restartCodeTimer();
+    }
   }
 });
 
@@ -247,6 +261,10 @@ function stopCodeTimer() {
 
 function restartCodeTimer() {
 	stopCodeTimer();
+
+	if (!pageActive.value) {
+		return;
+	}
 
 	if (!form.codeInterval) {
 		return;
