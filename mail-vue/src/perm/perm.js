@@ -108,6 +108,15 @@ const routers = {
             name: 'all-email',
             menu: true
         }
+    }, {
+        path: '/mail-pickup',
+        name: 'email-pickup',
+        component: () => import('@/views/email-pickup/index.vue'),
+        meta: {
+            title: 'mailPickup',
+            name: 'email-pickup',
+            menu: true
+        }
     }],
     'analysis:query': [{
         path: '/analysis',

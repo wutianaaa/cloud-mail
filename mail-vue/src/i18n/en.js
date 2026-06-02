@@ -337,7 +337,17 @@ const en = {
     searchUser: 'Search by user',
     searchEmail: 'Search by Email',
     searchSender: 'Search by Sender',
-    userEmail: 'Email Address'
+    userEmail: 'Email Address',
+    mailPickup: 'Mail Pickup',
+    mailPickupDesc: 'Generate a random mailbox and fetch recent messages or the latest code.',
+    generate: 'Generate',
+    mailCount: 'Message Count',
+    fetchMessages: 'Fetch Messages',
+    fetchLatestCode: 'Fetch Latest Code',
+    latestCode: 'Latest Code',
+    pickupMessages: 'Messages',
+    copyEmail: 'Copy Email',
+    code: 'Code'
 }
 
 export default en

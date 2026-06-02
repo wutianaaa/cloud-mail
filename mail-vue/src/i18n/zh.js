@@ -337,6 +337,16 @@ const zh = {
     searchUser: '搜索用户',
     searchEmail: '搜索邮箱',
     searchSender: '搜索发件人',
-    userEmail: '用户邮箱'
+    userEmail: '用户邮箱',
+    mailPickup: '邮件取件',
+    mailPickupDesc: '生成随机邮箱，并获取最近邮件或最后一封邮件验证码。',
+    generate: '生成',
+    mailCount: '邮件数量',
+    fetchMessages: '获取邮件',
+    fetchLatestCode: '获取验证码',
+    latestCode: '最新验证码',
+    pickupMessages: '邮件列表',
+    copyEmail: '复制邮箱',
+    code: '验证码'
 }
 export default zh
