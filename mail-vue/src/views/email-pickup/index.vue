@@ -21,7 +21,7 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item :label="t('toEmail')">
+        <el-form-item :label="t('toEmail')" class="email-field">
           <el-input v-model="form.email" :placeholder="t('toEmail')" clearable>
             <template #append>
               <div class="email-actions">
@@ -461,6 +461,10 @@ async function copyText(text) {
   }
 }
 
+.email-field {
+  grid-column: span 2;
+}
+
 .full-width {
   width: 100%;
 }
@@ -564,6 +568,10 @@ async function copyText(text) {
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .email-field {
+    grid-column: span 1;
   }
 
   .actions {
