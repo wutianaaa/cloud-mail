@@ -4,6 +4,20 @@
 
 请求地址经过 Worker 入口时需要带 `/api` 前缀；Hono 内部路由为 `/allEmail/...`。
 
+## 认证方式
+
+这两个取件接口支持两种认证方式：
+
+- 原有登录态认证：请求头 `Authorization: <JWT>`。
+- API Key 认证：请求头 `X-API-Key: <apiKey>`。
+
+API Key 在前端“邮件取件”页面设置。也兼容 query 参数 `apiKey`，但外部调用建议使用请求头，避免密钥出现在日志或浏览器地址栏中。
+
+```bash
+curl -H "X-API-Key: your-api-key" \
+  "https://your-domain.com/api/allEmail/list/messages?email=user@example.com&n=3"
+```
+
 ## 获取指定邮箱最近邮件
 
 ```http
@@ -48,6 +62,13 @@ GET /api/allEmail/list/messages?email=user@example.com&n=3&sendEmail=sender@exam
 
 ```http
 GET /api/allEmail/latest/code?email=user@example.com&sendEmail=sender@example.com
+```
+
+使用 API Key：
+
+```bash
+curl -H "X-API-Key: your-api-key" \
+  "https://your-domain.com/api/allEmail/latest/code?email=user@example.com&sendEmail=sender@example.com"
 ```
 
 ### Query 参数

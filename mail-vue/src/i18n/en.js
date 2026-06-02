@@ -347,7 +347,12 @@ const en = {
     latestCode: 'Latest Code',
     pickupMessages: 'Messages',
     copyEmail: 'Copy Email',
-    code: 'Code'
+    code: 'Code',
+    apiKey: 'API Key',
+    pickupApiKeyDesc: 'External callers can use this key with X-API-Key to access the pickup APIs.',
+    generateApiKey: 'Generate Key',
+    saveApiKey: 'Save Key',
+    clearApiKey: 'Clear Key'
 }
 
 export default en

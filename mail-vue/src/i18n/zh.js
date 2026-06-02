@@ -347,6 +347,11 @@ const zh = {
     latestCode: '最新验证码',
     pickupMessages: '邮件列表',
     copyEmail: '复制邮箱',
-    code: '验证码'
+    code: '验证码',
+    apiKey: 'API 密钥',
+    pickupApiKeyDesc: '外部调用方可使用该密钥通过 X-API-Key 访问取件接口。',
+    generateApiKey: '生成密钥',
+    saveApiKey: '保存密钥',
+    clearApiKey: '清空密钥'
 }
 export default zh

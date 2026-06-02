@@ -7,3 +7,11 @@ export function allEmailMessages(email, n = 1, sendEmail) {
 export function allEmailLatestCode(email, sendEmail) {
     return http.get('/allEmail/latest/code', {params: {email, sendEmail}, noMsg: true})
 }
+
+export function allEmailPickupApiKey() {
+    return http.get('/allEmail/pickup/apiKey')
+}
+
+export function allEmailPickupSetApiKey(apiKey) {
+    return http.put('/allEmail/pickup/apiKey', {apiKey})
+}

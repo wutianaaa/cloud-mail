@@ -8,6 +8,20 @@
     </div>
 
     <div class="pickup-panel">
+      <div class="panel-title panel-title-inline">
+        <span>{{ t('apiKey') }}</span>
+        <el-button size="small" @click="generateApiKey">{{ t('generateApiKey') }}</el-button>
+      </div>
+      <p class="api-key-desc">{{ t('pickupApiKeyDesc') }}</p>
+      <div class="api-key-actions">
+        <el-input v-model="apiKeyForm.apiKey" :placeholder="t('apiKey')" show-password clearable />
+        <el-button type="primary" :loading="apiKeyLoading" @click="saveApiKey">{{ t('saveApiKey') }}</el-button>
+        <el-button :disabled="!apiKeyForm.apiKey" @click="copyText(apiKeyForm.apiKey)">{{ t('copy') }}</el-button>
+        <el-button :loading="apiKeyLoading" @click="clearApiKey">{{ t('clearApiKey') }}</el-button>
+      </div>
+    </div>
+
+    <div class="pickup-panel">
       <el-form label-position="top" class="form-grid">
         <el-form-item :label="t('domain')">
           <el-select v-model="form.domain" :placeholder="t('select')" class="full-width">
@@ -98,10 +112,15 @@
 </template>
 
 <script setup>
-import {computed, reactive, ref, watch} from 'vue';
+import {computed, onMounted, reactive, ref, watch} from 'vue';
 import {useI18n} from 'vue-i18n';
 import {useSettingStore} from '@/store/setting.js';
-import {allEmailLatestCode, allEmailMessages} from '@/request/all-email-pickup.js';
+import {
+  allEmailLatestCode,
+  allEmailMessages,
+  allEmailPickupApiKey,
+  allEmailPickupSetApiKey
+} from '@/request/all-email-pickup.js';
 
 defineOptions({
   name: 'email-pickup'
@@ -113,6 +132,7 @@ const domainList = computed(() => settingStore.domainList || []);
 const messages = ref([]);
 const messagesLoading = ref(false);
 const codeLoading = ref(false);
+const apiKeyLoading = ref(false);
 const messageDialog = ref(false);
 const currentMessage = ref({});
 const codeResult = reactive({
@@ -127,6 +147,14 @@ const form = reactive({
   email: '',
   sendEmail: '',
   n: 1
+});
+
+const apiKeyForm = reactive({
+  apiKey: ''
+});
+
+onMounted(() => {
+  loadApiKey();
 });
 
 watch(domainList, (list) => {
@@ -153,6 +181,52 @@ function randomPrefix(length) {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, byte => chars[byte % chars.length]).join('');
+}
+
+function randomToken(length) {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, byte => chars[byte % chars.length]).join('');
+}
+
+async function loadApiKey() {
+  const data = await allEmailPickupApiKey();
+  apiKeyForm.apiKey = data?.apiKey || '';
+}
+
+function generateApiKey() {
+  apiKeyForm.apiKey = randomToken(32);
+}
+
+async function saveApiKey() {
+  apiKeyLoading.value = true;
+  try {
+    const data = await allEmailPickupSetApiKey(apiKeyForm.apiKey);
+    apiKeyForm.apiKey = data?.apiKey || '';
+    ElMessage({
+      message: t('saveSuccessMsg'),
+      type: 'success',
+      plain: true
+    });
+  } finally {
+    apiKeyLoading.value = false;
+  }
+}
+
+async function clearApiKey() {
+  apiKeyLoading.value = true;
+  try {
+    await allEmailPickupSetApiKey('');
+    apiKeyForm.apiKey = '';
+    ElMessage({
+      message: t('clearSuccess'),
+      type: 'success',
+      plain: true
+    });
+  } finally {
+    apiKeyLoading.value = false;
+  }
 }
 
 function checkEmail() {
@@ -260,6 +334,28 @@ async function copyText(text) {
 .pickup-panel {
   padding: 16px;
   margin-bottom: 16px;
+}
+
+.panel-title-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 0 12px;
+  border-bottom: 0;
+}
+
+.api-key-desc {
+  margin: 0 0 12px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.api-key-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 10px;
 }
 
 .form-grid {
@@ -382,6 +478,10 @@ async function copyText(text) {
       width: 100%;
       margin-left: 0;
     }
+  }
+
+  .api-key-actions {
+    grid-template-columns: 1fr;
   }
 }
 </style>

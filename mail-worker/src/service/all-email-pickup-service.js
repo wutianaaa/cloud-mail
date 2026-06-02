@@ -5,6 +5,7 @@ import { emailConst, isDel } from '../const/entity-const';
 import verifyUtils from '../utils/verify-utils';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
+import KvConst from '../const/kv-const';
 
 const allEmailPickupService = {
 	async messages(c, params) {
@@ -58,6 +59,34 @@ const allEmailPickupService = {
 			.get();
 
 		return row || { code: '' };
+	},
+
+	async getApiKey(c) {
+		const apiKey = await c.env.kv.get(KvConst.ALL_EMAIL_PICKUP_API_KEY);
+
+		return {
+			apiKey,
+			hasApiKey: !!apiKey
+		};
+	},
+
+	async setApiKey(c, params) {
+		const { apiKey } = params;
+
+		if (!apiKey) {
+			await c.env.kv.delete(KvConst.ALL_EMAIL_PICKUP_API_KEY);
+			return {
+				apiKey: '',
+				hasApiKey: false
+			};
+		}
+
+		await c.env.kv.put(KvConst.ALL_EMAIL_PICKUP_API_KEY, apiKey);
+
+		return {
+			apiKey,
+			hasApiKey: true
+		};
 	},
 
 	baseWhere(toEmail, sendEmail) {
