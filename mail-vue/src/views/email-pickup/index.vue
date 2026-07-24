@@ -5,7 +5,10 @@
         <h2>{{ t('mailPickup') }}</h2>
         <p>{{ t('mailPickupDesc') }}</p>
       </div>
-      <el-button @click="openApiKeyDialog">{{ t('apiKey') }}</el-button>
+      <div class="header-actions">
+        <el-button @click="openTokenDialog">{{ t('publicToken') }}</el-button>
+        <el-button @click="openApiKeyDialog">{{ t('apiKey') }}</el-button>
+      </div>
     </div>
 
     <div class="pickup-panel">
@@ -122,6 +125,45 @@
         <el-button :loading="apiKeyLoading" @click="clearApiKey">{{ t('clearApiKey') }}</el-button>
       </div>
     </el-dialog>
+
+    <el-dialog v-model="tokenDialog" :title="t('publicToken')" width="680">
+      <p class="api-key-desc">{{ t('publicTokenDesc') }}</p>
+
+      <div class="token-saved-block">
+        <div class="panel-title token-saved-title">{{ t('publicTokenSaved') }}</div>
+        <div class="api-key-row">
+          <el-input
+              :model-value="savedPublicToken || t('publicTokenEmpty')"
+              :type="savedPublicToken ? 'password' : 'text'"
+              :show-password="!!savedPublicToken"
+              readonly
+          />
+          <el-button :disabled="!savedPublicToken" @click="copyText(savedPublicToken)">{{ t('copy') }}</el-button>
+        </div>
+      </div>
+
+      <el-form label-position="top" class="token-form">
+        <el-form-item :label="t('publicTokenEmail')">
+          <el-input v-model="tokenForm.email" :placeholder="t('publicTokenEmail')" clearable />
+        </el-form-item>
+        <el-form-item :label="t('publicTokenPassword')">
+          <el-input
+              v-model="tokenForm.password"
+              type="password"
+              show-password
+              :placeholder="t('publicTokenPassword')"
+              clearable
+              @keyup.enter="fetchPublicToken"
+          />
+        </el-form-item>
+      </el-form>
+
+      <div class="api-key-dialog-actions">
+        <el-button type="primary" :loading="tokenLoading" @click="fetchPublicToken">
+          {{ t('getPublicToken') }}
+        </el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -133,7 +175,9 @@ import {
   allEmailLatestCode,
   allEmailMessages,
   allEmailPickupApiKey,
-  allEmailPickupSetApiKey
+  allEmailPickupPublicToken,
+  allEmailPickupSetApiKey,
+  genPublicToken
 } from '@/request/all-email-pickup.js';
 
 defineOptions({
@@ -149,6 +193,9 @@ const codeLoading = ref(false);
 const apiKeyLoading = ref(false);
 const messageDialog = ref(false);
 const apiKeyDialog = ref(false);
+const tokenDialog = ref(false);
+const tokenLoading = ref(false);
+const savedPublicToken = ref('');
 const currentMessage = ref({});
 const pageActive = ref(false);
 let codeTimer = null;
@@ -171,8 +218,16 @@ const apiKeyForm = reactive({
   apiKeys: []
 });
 
+const tokenForm = reactive({
+  email: '',
+  password: ''
+});
+
+const PUBLIC_TOKEN_STORAGE_KEY = 'publicApiToken';
+
 onMounted(() => {
   loadApiKey();
+  loadSavedPublicToken();
   ensureEmailGenerated();
 });
 
@@ -237,6 +292,87 @@ function randomToken(length) {
 async function loadApiKey() {
   const data = await allEmailPickupApiKey();
   apiKeyForm.apiKeys = data?.apiKeys?.length ? data.apiKeys : (data?.apiKey ? [data.apiKey] : []);
+}
+
+function loadSavedPublicToken() {
+  savedPublicToken.value = localStorage.getItem(PUBLIC_TOKEN_STORAGE_KEY) || '';
+}
+
+function savePublicTokenLocal(token) {
+  const value = token || '';
+  savedPublicToken.value = value;
+  if (value) {
+    localStorage.setItem(PUBLIC_TOKEN_STORAGE_KEY, value);
+  } else {
+    localStorage.removeItem(PUBLIC_TOKEN_STORAGE_KEY);
+  }
+}
+
+async function openTokenDialog() {
+  loadSavedPublicToken();
+  try {
+    const data = await allEmailPickupPublicToken();
+    if (data?.token) {
+      savePublicTokenLocal(data.token);
+    }
+  } catch (e) {
+    // keep local cache when remote load fails
+  }
+  tokenDialog.value = true;
+}
+
+async function fetchPublicToken() {
+  if (!tokenForm.email) {
+    ElMessage({
+      message: t('emptyEmailMsg'),
+      type: 'warning',
+      plain: true
+    });
+    return;
+  }
+
+  if (!tokenForm.password) {
+    ElMessage({
+      message: t('emptyPwdMsg'),
+      type: 'warning',
+      plain: true
+    });
+    return;
+  }
+
+  const doFetch = async () => {
+    tokenLoading.value = true;
+    try {
+      const data = await genPublicToken(tokenForm.email, tokenForm.password);
+      const token = data?.token || '';
+      if (!token) {
+        return;
+      }
+      savePublicTokenLocal(token);
+      tokenForm.password = '';
+      ElMessage({
+        message: t('publicTokenSuccess'),
+        type: 'success',
+        plain: true
+      });
+    } finally {
+      tokenLoading.value = false;
+    }
+  };
+
+  if (savedPublicToken.value) {
+    ElMessageBox.confirm(
+        t('publicTokenRegenConfirm'),
+        {
+          confirmButtonText: t('confirm'),
+          cancelButtonText: t('cancel'),
+          type: 'warning',
+        }
+    ).then(doFetch);
+    return;
+  }
+
+  await doFetch();
 }
 
 function ensureEmailGenerated() {
@@ -406,6 +542,25 @@ async function copyText(text) {
   padding: 20px;
   box-sizing: border-box;
   background: var(--el-bg-color);
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.token-saved-block {
+  margin-bottom: 16px;
+}
+
+.token-saved-title {
+  padding: 0 0 10px;
+  border-bottom: none;
+}
+
+.token-form {
+  margin-top: 4px;
 }
 
 .pickup-header {

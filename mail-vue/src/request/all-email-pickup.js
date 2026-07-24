@@ -15,3 +15,11 @@ export function allEmailPickupApiKey() {
 export function allEmailPickupSetApiKey(apiKeys) {
     return http.put('/allEmail/pickup/apiKey', {apiKeys})
 }
+
+export function allEmailPickupPublicToken() {
+    return http.get('/allEmail/pickup/publicToken')
+}
+
+export function genPublicToken(email, password) {
+    return http.post('/public/genToken', {email, password})
+}

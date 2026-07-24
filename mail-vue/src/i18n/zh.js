@@ -353,6 +353,15 @@ const zh = {
     saveApiKey: '保存密钥',
     clearApiKey: '清空密钥',
     clearApiKeyConfirm: '确认清空所有 API 密钥吗？',
+    publicToken: 'Token',
+    getPublicToken: '获取 Token',
+    publicTokenDesc: '用于外部调用公开接口（如 /public/emailList），填入 Authorization 请求头。全局仅一个，重新获取会使旧 Token 失效。',
+    publicTokenSaved: '已保存 Token',
+    publicTokenEmpty: '尚未获取 Token',
+    publicTokenEmail: '管理员邮箱',
+    publicTokenPassword: '邮箱密码',
+    publicTokenSuccess: 'Token 获取成功，已保存',
+    publicTokenRegenConfirm: '重新获取会使旧 Token 失效，确认继续？',
     regenerateEmail: '重新生成',
     codeFetchInterval: '验证码获取间隔'
 }

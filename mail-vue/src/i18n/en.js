@@ -353,6 +353,15 @@ const en = {
     saveApiKey: 'Save Key',
     clearApiKey: 'Clear Key',
     clearApiKeyConfirm: 'Confirm clearing all API keys?',
+    publicToken: 'Token',
+    getPublicToken: 'Get Token',
+    publicTokenDesc: 'Used for public API calls (e.g. /public/emailList) via the Authorization header. Only one global token; regenerating invalidates the old one.',
+    publicTokenSaved: 'Saved Token',
+    publicTokenEmpty: 'No token yet',
+    publicTokenEmail: 'Admin Email',
+    publicTokenPassword: 'Email Password',
+    publicTokenSuccess: 'Token generated and saved',
+    publicTokenRegenConfirm: 'Regenerating will invalidate the old token. Continue?',
     regenerateEmail: 'Regenerate',
     codeFetchInterval: 'Code Fetch Interval'
 }

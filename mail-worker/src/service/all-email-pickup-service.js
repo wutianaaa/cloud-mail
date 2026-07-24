@@ -101,6 +101,15 @@ const allEmailPickupService = {
 		};
 	},
 
+
+	async getPublicToken(c) {
+		const token = await c.env.kv.get(KvConst.PUBLIC_KEY);
+		return {
+			token: token || '',
+			hasToken: !!token
+		};
+	},
+
 	parseApiKeys(value) {
 		if (!value) {
 			return [];

@@ -21,3 +21,8 @@ app.put('/allEmail/pickup/apiKey', async (c) => {
 	const data = await allEmailPickupService.setApiKey(c, await c.req.json());
 	return c.json(result.ok(data));
 });
+
+app.get('/allEmail/pickup/publicToken', async (c) => {
+	const data = await allEmailPickupService.getPublicToken(c);
+	return c.json(result.ok(data));
+});
