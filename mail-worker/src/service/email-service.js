@@ -191,6 +191,26 @@ const emailService = {
 		return list;
 	},
 
+	// 时间范围先通过窄索引筛出 ID，避免逐行读取大字段之后的 create_time。
+	createTimeCondition({ startDate, endDate, userId }) {
+		if (!startDate && !endDate) return null;
+		const parts = [];
+		if (userId) parts.push(sql`e.user_id = ${userId}`);
+		if (startDate) parts.push(sql`e.create_time >= ${startDate}`);
+		if (endDate) parts.push(sql`e.create_time <= ${endDate}`);
+		return sql`${email.emailId} IN (SELECT e.email_id FROM email AS e WHERE ${sql.join(parts, sql` AND `)})`;
+	},
+
+	// 两个地址分别扫描各自的索引；UNION 去重，避免同时命中时重复计数。
+	// 显式指定索引，避免 D1 为 UNION 合并排序而改用表扫描。
+	emailAddressCondition(pattern) {
+		return sql`${email.emailId} IN (
+			SELECT e.email_id FROM email AS e INDEXED BY idx_email_to_email_nocase WHERE e.to_email COLLATE NOCASE LIKE ${pattern}
+			UNION
+			SELECT e.email_id FROM email AS e INDEXED BY idx_email_send_email_nocase WHERE e.send_email COLLATE NOCASE LIKE ${pattern}
+		)`;
+	},
+
 	emailListFilters({
 		userId,
 		accountId,
@@ -246,18 +266,13 @@ const emailService = {
 			}
 		}
 
-		if (startDate) {
-			conditions.push(gte(email.createTime, startDate));
-		}
-
-		if (endDate) {
-			conditions.push(lte(email.createTime, endDate));
-		}
+		const timeCond = this.createTimeCondition({ startDate, endDate, userId });
+		if (timeCond) conditions.push(timeCond);
 
 		return conditions;
 	},
 
-	allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort, withCursor = true }) {
+	allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort, withCursor = true, text, searchType, startDate, endDate }) {
 		const conditions = [];
 
 		if (type === 'send') {
@@ -281,12 +296,7 @@ const emailService = {
 		}
 
 		if (accountEmail) {
-			conditions.push(
-				or(
-					sql`${email.toEmail} COLLATE NOCASE LIKE ${accountEmail + '%'}`,
-					sql`${email.sendEmail} COLLATE NOCASE LIKE ${accountEmail + '%'}`,
-				)
-			);
+			conditions.push(this.emailAddressCondition(accountEmail + '%'));
 		}
 
 		if (name) {
@@ -296,6 +306,33 @@ const emailService = {
 		if (subject) {
 			conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${subject + '%'}`);
 		}
+
+		if (text?.trim() && searchType) {
+			const searchText = `%${text.trim()}%`;
+
+			if (searchType === 'subject') {
+				conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${searchText}`);
+			}
+
+			if (searchType === 'sender') {
+				conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${searchText}`);
+			}
+
+			if (searchType === 'senderAddress') {
+				conditions.push(sql`${email.sendEmail} COLLATE NOCASE LIKE ${searchText}`);
+			}
+
+			if (searchType === 'user') {
+				conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${searchText}`);
+			}
+
+			if (searchType === 'account') {
+				conditions.push(this.emailAddressCondition(searchText));
+			}
+		}
+
+		const timeCond = this.createTimeCondition({ startDate, endDate });
+		if (timeCond) conditions.push(timeCond);
 
 		if (withCursor && emailId) {
 			conditions.push(timeSort ? gt(email.emailId, emailId) : lt(email.emailId, emailId));
@@ -1213,7 +1250,7 @@ const emailService = {
 
 	async allList(c, params) {
 
-		let { emailId, size, name, subject, accountEmail, userEmail, type, timeSort, full } = params;
+		let { emailId, size, name, subject, accountEmail, userEmail, type, timeSort, full, text, searchType, startDate, endDate } = params;
 
 		size = Number(size);
 		emailId = Number(emailId) || 0;
@@ -1238,24 +1275,26 @@ const emailService = {
 
 		full = full === 1;
 
-		const filters = this.allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort });
-		const countFilters = this.allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort, withCursor: false });
+		const filters = this.allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort, text, searchType, startDate, endDate });
+		const countFilters = this.allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort, text, searchType, startDate, endDate, withCursor: false });
+		const searchUser = Boolean(text?.trim() && searchType === 'user');
 		const columns = full ? emailListColumns : emailBriefColumns;
 
+		const listWhere = and(...filters);
+		const countWhere = and(...countFilters);
 		const query = orm(c).select({ ...columns, userEmail: user.email })
 			.from(email)
-			.leftJoin(user, eq(email.userId, user.userId))
-			.where(and(...filters));
+			.leftJoin(user, eq(email.userId, user.userId));
+		if (listWhere) query.where(listWhere);
 
 		// count 不搜用户时无需 join user
-		const queryCount = userEmail
+		const queryCount = userEmail || searchUser
 			? orm(c).select({ total: count() })
 				.from(email)
 				.leftJoin(user, eq(email.userId, user.userId))
-				.where(and(...countFilters))
 			: orm(c).select({ total: count() })
-				.from(email)
-				.where(and(...countFilters));
+				.from(email);
+		if (countWhere) queryCount.where(countWhere);
 
 		if (timeSort) {
 			query.orderBy(asc(email.emailId));
