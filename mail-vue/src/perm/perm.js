@@ -80,7 +80,7 @@ const routers = {
         }
     }],
     'setting:query': [{
-        path: '/system-setting',
+        path: '/system-settings',
         name: 'sys-setting',
         component: () => import('@/views/sys-setting/index.vue'),
         meta: {
@@ -108,18 +108,9 @@ const routers = {
             name: 'all-email',
             menu: true
         }
-    }, {
-        path: '/mail-pickup',
-        name: 'email-pickup',
-        component: () => import('@/views/email-pickup/index.vue'),
-        meta: {
-            title: 'mailPickup',
-            name: 'email-pickup',
-            menu: true
-        }
     }],
     'analysis:query': [{
-        path: '/analysis',
+        path: '/dashboard',
         name: 'analysis',
         component: () => import('@/views/analysis/index.vue'),
         meta: {

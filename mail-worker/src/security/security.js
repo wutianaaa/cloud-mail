@@ -39,8 +39,6 @@ const requirePerms = [
 	'/allEmail/delete',
 	'/allEmail/batchDelete',
 	'/allEmail/latest',
-	'/allEmail/pickup/apiKey',
-	'/allEmail/pickup/publicToken',
 	'/setting/setBackground',
 	'/setting/deleteBackground',
 	'/setting/set',
@@ -81,7 +79,7 @@ const premKey = {
 	'user:set-status': ['/user/setStatus', '/user/restore'],
 	'user:set-type': ['/user/setType'],
 	'user:delete': ['/user/delete','/user/deleteAccount'],
-	'all-email:query': ['/allEmail/list','/allEmail/latest','/allEmail/pickup/apiKey','/allEmail/pickup/publicToken'],
+	'all-email:query': ['/allEmail/list','/allEmail/latest'],
 	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
 	'setting:query': ['/setting/query'],
 	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist'],
@@ -110,10 +108,6 @@ app.use('*', async (c, next) => {
 		if (publicToken !== userPublicToken) {
 			throw new BizError(t('publicTokenFail'), 401);
 		}
-		return await next();
-	}
-
-	if (isPickupApiPath(path) && await validPickupApiKey(c)) {
 		return await next();
 	}
 
@@ -182,38 +176,4 @@ function permKeyToPaths(permKeys) {
 		}
 	}
 	return paths;
-}
-
-function isPickupApiPath(path) {
-	return path === '/allEmail/list/messages' || path === '/allEmail/latest/code';
-}
-
-async function validPickupApiKey(c) {
-	const apiKey = c.req.header(constant.API_KEY_HEADER) || c.req.query('apiKey');
-
-	if (!apiKey) {
-		return false;
-	}
-
-	const savedApiKey = await c.env.kv.get(KvConst.ALL_EMAIL_PICKUP_API_KEY);
-	const savedApiKeys = parsePickupApiKeys(savedApiKey);
-
-	return savedApiKeys.includes(apiKey);
-}
-
-function parsePickupApiKeys(value) {
-	if (!value) {
-		return [];
-	}
-
-	try {
-		const data = JSON.parse(value);
-		if (Array.isArray(data)) {
-			return data.map(item => String(item || '').trim()).filter(Boolean);
-		}
-	} catch (e) {
-		return [String(value).trim()].filter(Boolean);
-	}
-
-	return [String(value).trim()].filter(Boolean);
 }
